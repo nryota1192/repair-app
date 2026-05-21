@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, GripVertical, Trash2, Check, X } from 'lucide-react'
+import { Plus, Trash2, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -49,6 +49,7 @@ export function LineItemsSection({
 
   const estimatedSubtotal = lineItems.reduce((sum, i) => sum + calcEstimatedSubtotal(i), 0)
   const actualSubtotal = lineItems.reduce((sum, i) => sum + (i.actual_amount ?? 0), 0)
+  const hasActual = lineItems.some((i) => i.actual_amount != null)
 
   function startNew() {
     setEditing({
@@ -64,6 +65,7 @@ export function LineItemsSection({
   }
 
   function startEdit(item: LineItem) {
+    if (editing) return
     setEditing({
       id: item.id,
       name: item.name,
@@ -135,7 +137,74 @@ export function LineItemsSection({
         </Button>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* ── Mobile card list ── */}
+      <div className="md:hidden">
+        {lineItems.map((item) =>
+          editing?.id === item.id ? (
+            <MobileEditForm
+              key={item.id}
+              editing={editing}
+              onChange={setEditing}
+              onSave={saveRow}
+              onCancel={() => setEditing(null)}
+              saving={saving}
+            />
+          ) : (
+            <div
+              key={item.id}
+              className="flex items-center gap-3 border-b px-4 py-3 last:border-0 active:bg-muted/20"
+              onClick={() => startEdit(item)}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{item.name}</p>
+                {(item.quantity != null || item.unit) && (
+                  <p className="text-xs text-muted-foreground">
+                    {[item.quantity?.toLocaleString('ja-JP'), item.unit].filter(Boolean).join(' ')}
+                    {item.unit_price != null && ` × ${formatCurrency(item.unit_price)}`}
+                  </p>
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-medium">{formatCurrency(calcEstimatedSubtotal(item))}</p>
+                <p className={cn('text-xs', item.actual_amount == null ? 'text-muted-foreground/40' : 'text-muted-foreground')}>
+                  {item.actual_amount != null ? `実: ${formatCurrency(item.actual_amount)}` : '実経費未入力'}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={(e) => { e.stopPropagation(); deleteItem(item.id) }}
+              >
+                <Trash2 className="size-3.5 text-destructive" />
+              </Button>
+            </div>
+          )
+        )}
+
+        {editing?.id === null && (
+          <MobileEditForm
+            editing={editing}
+            onChange={setEditing}
+            onSave={saveRow}
+            onCancel={() => setEditing(null)}
+            saving={saving}
+          />
+        )}
+
+        {/* Mobile subtotal */}
+        <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-2 text-sm font-medium">
+          <span className="text-muted-foreground">小計</span>
+          <div className="text-right">
+            <p>{formatCurrency(estimatedSubtotal)}</p>
+            {hasActual && (
+              <p className="text-xs text-muted-foreground">実: {formatCurrency(actualSubtotal)}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop table ── */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/10 text-muted-foreground">
@@ -188,7 +257,6 @@ export function LineItemsSection({
               )
             ))}
 
-            {/* New row editor */}
             {editing?.id === null && (
               <EditRow
                 editing={editing}
@@ -205,13 +273,102 @@ export function LineItemsSection({
                 小計
               </td>
               <td className="py-2 text-right">{formatCurrency(estimatedSubtotal)}</td>
-              <td className={cn('py-2 text-right', actualSubtotal === 0 && lineItems.every((i) => i.actual_amount == null) ? 'text-muted-foreground/50' : '')}>
-                {lineItems.some((i) => i.actual_amount != null) ? formatCurrency(actualSubtotal) : '—'}
+              <td className={cn('py-2 text-right', !hasActual ? 'text-muted-foreground/50' : '')}>
+                {hasActual ? formatCurrency(actualSubtotal) : '—'}
               </td>
               <td colSpan={2} />
             </tr>
           </tfoot>
         </table>
+      </div>
+    </div>
+  )
+}
+
+function MobileEditForm({
+  editing,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+}: {
+  editing: EditingRow
+  onChange: (row: EditingRow) => void
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  function set(field: keyof EditingRow, value: string) {
+    onChange({ ...editing, [field]: value })
+  }
+
+  const previewSubtotal =
+    editing.quantity && editing.unit_price
+      ? Number(editing.quantity) * Number(editing.unit_price)
+      : null
+
+  return (
+    <div className="border-b bg-primary/5 px-4 py-3 space-y-2">
+      <Input
+        className="h-9 text-sm"
+        placeholder="項目名 *"
+        value={editing.name}
+        onChange={(e) => set('name', e.target.value)}
+        autoFocus
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <Input
+          className="h-9 text-sm"
+          type="number"
+          placeholder="数量"
+          value={editing.quantity}
+          onChange={(e) => set('quantity', e.target.value)}
+        />
+        <Input
+          className="h-9 text-sm"
+          placeholder="単位(個・時間…)"
+          value={editing.unit}
+          onChange={(e) => set('unit', e.target.value)}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Input
+            className="h-9 text-sm"
+            type="number"
+            placeholder="見積単価(税抜)"
+            value={editing.unit_price}
+            onChange={(e) => set('unit_price', e.target.value)}
+          />
+          {previewSubtotal != null && (
+            <p className="mt-0.5 text-xs text-muted-foreground text-right">
+              小計: {formatCurrency(previewSubtotal)}
+            </p>
+          )}
+        </div>
+        <Input
+          className="h-9 text-sm"
+          type="number"
+          placeholder="実経費"
+          value={editing.actual_amount}
+          onChange={(e) => set('actual_amount', e.target.value)}
+        />
+      </div>
+      <Input
+        className="h-9 text-sm"
+        placeholder="備考"
+        value={editing.notes}
+        onChange={(e) => set('notes', e.target.value)}
+      />
+      <div className="flex justify-end gap-2 pt-1">
+        <Button variant="outline" size="sm" onClick={onCancel}>
+          <X className="size-3.5 mr-1" />
+          キャンセル
+        </Button>
+        <Button size="sm" onClick={onSave} disabled={saving}>
+          <Check className="size-3.5 mr-1" />
+          保存
+        </Button>
       </div>
     </div>
   )

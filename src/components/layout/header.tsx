@@ -1,11 +1,15 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { LogOut } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter()
 
   async function handleLogout() {
@@ -16,10 +20,15 @@ export function Header() {
   }
 
   return (
-    <header className="flex h-14 items-center justify-end border-b bg-background px-4">
+    <header className="flex h-14 items-center border-b bg-background px-4">
+      <Button variant="ghost" size="icon-xs" className="mr-3 md:hidden" onClick={onMenuClick}>
+        <Menu className="size-5" />
+      </Button>
+      <span className="text-sm font-semibold md:hidden">修繕管理</span>
+      <div className="flex-1" />
       <Button variant="ghost" size="sm" onClick={handleLogout}>
         <LogOut className="size-4" />
-        ログアウト
+        <span className="ml-1 hidden sm:inline">ログアウト</span>
       </Button>
     </header>
   )

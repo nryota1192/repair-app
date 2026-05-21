@@ -89,7 +89,37 @@ export default async function DashboardPage() {
             すべて表示
           </Link>
         </div>
-        <div className="rounded-xl border">
+
+        {/* Mobile card list */}
+        <div className="rounded-xl border md:hidden">
+          {(recentProjects ?? []).length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">案件がありません</p>
+          )}
+          {(recentProjects ?? []).map((p, idx) => (
+            <Link
+              key={p.id}
+              href={`/projects/${p.id}`}
+              className={cn('flex items-center justify-between px-4 py-3 hover:bg-muted/20', idx > 0 && 'border-t')}
+            >
+              <div className="min-w-0">
+                <p className="font-medium truncate">{p.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {(p as any).customers?.name ?? '—'}
+                  {p.estimated_at ? ` · ${formatDate(p.estimated_at)}` : ''}
+                </p>
+              </div>
+              <div className="ml-4 shrink-0 text-right">
+                <ProjectStatusBadge status={p.status as ProjectStatus} />
+                {p.received_amount != null && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">{formatCurrency(p.received_amount)}</p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block rounded-xl border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -115,9 +145,7 @@ export default async function DashboardPage() {
                       {p.title}
                     </Link>
                   </TableCell>
-                  <TableCell>
-                    {(p as any).customers?.name ?? '—'}
-                  </TableCell>
+                  <TableCell>{(p as any).customers?.name ?? '—'}</TableCell>
                   <TableCell>
                     <ProjectStatusBadge status={p.status as ProjectStatus} />
                   </TableCell>

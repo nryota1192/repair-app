@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { cn, formatCurrency } from '@/lib/utils'
 import { calcProjectSummary } from '@/lib/calculations'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import type { LineItem, RoundingMode } from '@/types/database'
 
 interface Props {
@@ -14,6 +13,13 @@ interface Props {
   receivedAmount: number | null
   onReceivedAmountChange: (value: number | null) => void
 }
+
+const CATEGORY_LABELS = {
+  material: '材料費',
+  labor: '作業費(人工)',
+  transport: '交通費',
+  other: 'その他',
+} as const
 
 export function SummaryPanel({
   lineItems,
@@ -39,19 +45,83 @@ export function SummaryPanel({
     }
   }
 
-  const CATEGORY_LABELS = {
-    material: '材料費',
-    labor: '作業費(人工)',
-    transport: '交通費',
-    other: 'その他',
-  } as const
-
   return (
     <div className="sticky bottom-0 rounded-xl border bg-background shadow-lg">
       <div className="border-b px-4 py-2">
         <h2 className="font-semibold">集計サマリー</h2>
       </div>
-      <div className="overflow-x-auto">
+
+      {/* ── Mobile layout: stacked cards ── */}
+      <div className="md:hidden px-4 py-3 space-y-3">
+        {/* Category subtotals */}
+        <div className="space-y-1 text-sm">
+          {(['material', 'labor', 'transport', 'other'] as const).map((cat) => (
+            <div key={cat} className="flex items-center justify-between">
+              <span className="text-muted-foreground">{CATEGORY_LABELS[cat]}</span>
+              <div className="text-right">
+                <span className="font-medium">{formatCurrency(summary[cat].estimatedSubtotal)}</span>
+                {lineItems.filter((i) => i.category === cat).some((i) => i.actual_amount != null) && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    実 {formatCurrency(summary[cat].actualSubtotal)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t pt-3 space-y-1.5 text-sm">
+          <div className="flex justify-between font-semibold">
+            <span>合計(税抜)</span>
+            <div className="text-right">
+              <span>{formatCurrency(summary.estimatedTotal)}</span>
+              {summary.actualTotal > 0 && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  実 {formatCurrency(summary.actualTotal)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>消費税({Math.round(taxRate * 100)}%)</span>
+            <span>{formatCurrency(summary.taxAmount)}</span>
+          </div>
+          <div className="flex justify-between font-semibold">
+            <span>合計(税込)</span>
+            <span>{formatCurrency(summary.estimatedTotalWithTax)}</span>
+          </div>
+        </div>
+
+        <div className="border-t pt-3 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm">受注金額(税込)</span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-sm text-muted-foreground">¥</span>
+              <Input
+                className="h-8 w-32 text-right text-sm"
+                type="number"
+                placeholder="未入力"
+                value={receivedInput}
+                onChange={(e) => setReceivedInput(e.target.value)}
+                onBlur={handleReceivedBlur}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-semibold">予定利益</span>
+            <ProfitAmount value={summary.plannedProfit} />
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-semibold">実利益</span>
+            <ProfitAmount value={summary.actualProfit} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop layout: table ── */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-muted-foreground">
@@ -143,7 +213,7 @@ export function SummaryPanel({
 function ProfitAmount({ value }: { value: number | null }) {
   if (value === null) return <span className="text-muted-foreground">—</span>
   return (
-    <span className={cn(value >= 0 ? 'text-green-600' : 'text-destructive')}>
+    <span className={cn('font-semibold', value >= 0 ? 'text-green-600' : 'text-destructive')}>
       {formatCurrency(value)}
     </span>
   )
