@@ -50,6 +50,10 @@ export function LineItemsSection({
   const estimatedSubtotal = lineItems.reduce((sum, i) => sum + calcEstimatedSubtotal(i), 0)
   const actualSubtotal = lineItems.reduce((sum, i) => sum + (i.actual_amount ?? 0), 0)
   const hasActual = lineItems.some((i) => i.actual_amount != null)
+  // 作業費・人工カテゴリの数量合計（時間合計）
+  const totalHours = category === 'labor'
+    ? lineItems.reduce((sum, i) => sum + (i.quantity ?? 0), 0)
+    : null
 
   function startNew() {
     setEditing({
@@ -193,7 +197,14 @@ export function LineItemsSection({
 
         {/* Mobile subtotal */}
         <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-2 text-sm font-medium">
-          <span className="text-muted-foreground">小計</span>
+          <div className="flex items-center gap-3">
+            <span className="text-muted-foreground">小計</span>
+            {totalHours != null && totalHours > 0 && (
+              <span className="text-xs font-normal text-muted-foreground">
+                合計 {totalHours.toLocaleString('ja-JP')} 時間
+              </span>
+            )}
+          </div>
           <div className="text-right">
             <p>{formatCurrency(estimatedSubtotal)}</p>
             {hasActual && (
@@ -269,8 +280,13 @@ export function LineItemsSection({
           </tbody>
           <tfoot>
             <tr className="border-t bg-muted/20 font-medium">
-              <td colSpan={4} className="py-2 pl-4 text-right text-muted-foreground text-xs">
-                小計
+              <td colSpan={4} className="py-2 pl-4 text-muted-foreground text-xs">
+                <div className="flex items-center justify-end gap-4">
+                  {totalHours != null && totalHours > 0 && (
+                    <span>合計 {totalHours.toLocaleString('ja-JP')} 時間</span>
+                  )}
+                  <span>小計</span>
+                </div>
               </td>
               <td className="py-2 text-right">{formatCurrency(estimatedSubtotal)}</td>
               <td className={cn('py-2 text-right', !hasActual ? 'text-muted-foreground/50' : '')}>
