@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Settings } from 'lucide-react'
+import { ArrowLeft, Settings, FileSpreadsheet, Printer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ProjectStatusBadge } from '@/components/projects/project-status-badge'
@@ -11,6 +11,7 @@ import { SummaryPanel } from './summary-panel'
 import { ProjectEditDialog } from './project-edit-dialog'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
+import { exportEstimateToExcel } from '@/lib/export-excel'
 import type { LineItem, Project } from '@/types/database'
 
 type ProjectWithCustomer = Project & { customers: { id: string; name: string } }
@@ -65,10 +66,28 @@ export function ProjectDetailClient({ project: initialProject, initialLineItems,
             {project.end_date && <span>完工: {formatDate(project.end_date)}</span>}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-          <Settings className="size-4" />
-          案件編集
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportEstimateToExcel(project, lineItems)}
+          >
+            <FileSpreadsheet className="size-4" />
+            <span className="hidden sm:inline">Excel</span>出力
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(`/projects/${project.id}/print`, '_blank')}
+          >
+            <Printer className="size-4" />
+            <span className="hidden sm:inline">PDF</span>出力
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Settings className="size-4" />
+            <span className="hidden sm:inline">案件編集</span>
+          </Button>
+        </div>
       </div>
 
       {/* Line items by category */}
