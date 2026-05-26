@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -45,7 +46,7 @@ export function WorkerDialog({ open, onOpenChange, worker, onSaved }: Props) {
   async function onSubmit(data: FormData) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) { toast.error('ログインが必要です'); return }
 
     const payload = {
       name: data.name,
@@ -61,14 +62,16 @@ export function WorkerDialog({ open, onOpenChange, worker, onSaved }: Props) {
         .eq('id', worker.id)
         .select()
         .single()
-      if (!error && updated) onSaved(updated as Worker)
+      if (error) { toast.error(`保存に失敗しました: ${error.message}`); return }
+      onSaved(updated as Worker)
     } else {
       const { data: created, error } = await supabase
         .from('workers')
         .insert(payload)
         .select()
         .single()
-      if (!error && created) onSaved(created as Worker)
+      if (error) { toast.error(`保存に失敗しました: ${error.message}`); return }
+      onSaved(created as Worker)
     }
   }
 
