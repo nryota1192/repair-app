@@ -12,6 +12,7 @@ interface Props {
   taxRate: number
   roundingMode: RoundingMode
   receivedAmount: number | null
+  workRecordsTotal: number
   onReceivedAmountChange: (value: number | null) => void
 }
 
@@ -27,6 +28,7 @@ export function SummaryPanel({
   taxRate,
   roundingMode,
   receivedAmount,
+  workRecordsTotal,
   onReceivedAmountChange,
 }: Props) {
   const [receivedInput, setReceivedInput] = useState(
@@ -39,7 +41,7 @@ export function SummaryPanel({
     setReceivedInput(receivedAmount != null ? String(receivedAmount) : '')
   }, [receivedAmount])
 
-  const summary = calcProjectSummary(lineItems, taxRate, roundingMode, receivedAmount)
+  const summary = calcProjectSummary(lineItems, taxRate, roundingMode, receivedAmount, workRecordsTotal)
 
   function handleReceivedBlur() {
     const num = receivedInput ? Number(receivedInput) : null
@@ -83,10 +85,18 @@ export function SummaryPanel({
                 <span className="text-muted-foreground">{CATEGORY_LABELS[cat]}</span>
                 <div className="text-right">
                   <span className="font-medium">{formatCurrency(summary[cat].estimatedSubtotal)}</span>
-                  {lineItems.filter((i) => i.category === cat).some((i) => i.actual_amount != null) && (
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      実 {formatCurrency(summary[cat].actualSubtotal)}
-                    </span>
+                  {cat === 'labor' ? (
+                    workRecordsTotal > 0 && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        実 {formatCurrency(workRecordsTotal)}
+                      </span>
+                    )
+                  ) : (
+                    lineItems.filter((i) => i.category === cat).some((i) => i.actual_amount != null) && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        実 {formatCurrency(summary[cat].actualSubtotal)}
+                      </span>
+                    )
                   )}
                 </div>
               </div>
@@ -163,9 +173,13 @@ export function SummaryPanel({
                   <td className="py-1.5 pl-4 text-muted-foreground">{CATEGORY_LABELS[cat]}</td>
                   <td className="py-1.5 pr-4 text-right">{formatCurrency(summary[cat].estimatedSubtotal)}</td>
                   <td className="py-1.5 pr-4 text-right">
-                    {lineItems.filter((i) => i.category === cat).some((i) => i.actual_amount != null)
-                      ? formatCurrency(summary[cat].actualSubtotal)
-                      : <span className="text-muted-foreground/50">—</span>
+                    {cat === 'labor'
+                      ? workRecordsTotal > 0
+                        ? formatCurrency(workRecordsTotal)
+                        : <span className="text-muted-foreground/50">—</span>
+                      : lineItems.filter((i) => i.category === cat).some((i) => i.actual_amount != null)
+                        ? formatCurrency(summary[cat].actualSubtotal)
+                        : <span className="text-muted-foreground/50">—</span>
                     }
                   </td>
                 </tr>

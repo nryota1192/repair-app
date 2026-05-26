@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, FolderOpen, X } from 'lucide-react'
+import { LayoutDashboard, Users, FolderOpen, HardHat, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -10,6 +10,7 @@ const navItems = [
   { href: '/', label: 'ダッシュボード', icon: LayoutDashboard },
   { href: '/customers', label: '顧客管理', icon: Users },
   { href: '/projects', label: '案件管理', icon: FolderOpen },
+  { href: '/workers', label: '作業員', icon: HardHat },
 ]
 
 interface SidebarProps {

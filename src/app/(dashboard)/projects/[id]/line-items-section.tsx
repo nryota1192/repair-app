@@ -207,7 +207,8 @@ export function LineItemsSection({
           </div>
           <div className="text-right">
             <p>{formatCurrency(estimatedSubtotal)}</p>
-            {hasActual && (
+            {/* labor カテゴリは work_records で管理するため実経費を非表示 */}
+            {hasActual && category !== 'labor' && (
               <p className="text-xs text-muted-foreground">実: {formatCurrency(actualSubtotal)}</p>
             )}
           </div>
@@ -224,7 +225,10 @@ export function LineItemsSection({
               <th className="py-2 text-left font-medium">単位</th>
               <th className="py-2 text-right font-medium">単価(税抜)</th>
               <th className="py-2 text-right font-medium">見積小計</th>
-              <th className="py-2 text-right font-medium">実経費</th>
+              {/* labor カテゴリは work_records で実経費管理するため非表示 */}
+              {category !== 'labor' && (
+                <th className="py-2 text-right font-medium">実経費</th>
+              )}
               <th className="py-2 pr-2 text-left font-medium">備考</th>
               <th className="py-2 pr-4 w-16" />
             </tr>
@@ -239,6 +243,7 @@ export function LineItemsSection({
                   onSave={saveRow}
                   onCancel={() => setEditing(null)}
                   saving={saving}
+                  showActual={category !== 'labor'}
                 />
               ) : (
                 <tr
@@ -251,9 +256,11 @@ export function LineItemsSection({
                   <td className="py-2 pl-1 text-muted-foreground">{item.unit ?? '—'}</td>
                   <td className="py-2 text-right">{item.unit_price != null ? formatCurrency(item.unit_price) : '—'}</td>
                   <td className="py-2 text-right font-medium">{formatCurrency(calcEstimatedSubtotal(item))}</td>
-                  <td className={cn('py-2 text-right', item.actual_amount == null ? 'text-muted-foreground/50' : '')}>
-                    {item.actual_amount != null ? formatCurrency(item.actual_amount) : '未入力'}
-                  </td>
+                  {category !== 'labor' && (
+                    <td className={cn('py-2 text-right', item.actual_amount == null ? 'text-muted-foreground/50' : '')}>
+                      {item.actual_amount != null ? formatCurrency(item.actual_amount) : '未入力'}
+                    </td>
+                  )}
                   <td className="py-2 pr-2 text-muted-foreground text-xs">{item.notes ?? ''}</td>
                   <td className="py-2 pr-4 text-right">
                     <Button
@@ -289,10 +296,12 @@ export function LineItemsSection({
                 </div>
               </td>
               <td className="py-2 text-right">{formatCurrency(estimatedSubtotal)}</td>
-              <td className={cn('py-2 text-right', !hasActual ? 'text-muted-foreground/50' : '')}>
-                {hasActual ? formatCurrency(actualSubtotal) : '—'}
-              </td>
-              <td colSpan={2} />
+              {category !== 'labor' && (
+                <td className={cn('py-2 text-right', !hasActual ? 'text-muted-foreground/50' : '')}>
+                  {hasActual ? formatCurrency(actualSubtotal) : '—'}
+                </td>
+              )}
+              <td colSpan={category !== 'labor' ? 2 : 3} />
             </tr>
           </tfoot>
         </table>
@@ -396,12 +405,14 @@ function EditRow({
   onSave,
   onCancel,
   saving,
+  showActual = true,
 }: {
   editing: EditingRow
   onChange: (row: EditingRow) => void
   onSave: () => void
   onCancel: () => void
   saving: boolean
+  showActual?: boolean
 }) {
   function set(field: keyof EditingRow, value: string) {
     onChange({ ...editing, [field]: value })
@@ -461,16 +472,18 @@ function EditRow({
       <td className="py-1 px-2 text-right text-muted-foreground text-xs">
         {previewSubtotal != null ? formatCurrency(previewSubtotal) : '—'}
       </td>
-      <td className="py-1 px-1">
-        <Input
-          className="h-7 text-sm text-right w-24"
-          type="number"
-          placeholder="実経費"
-          value={editing.actual_amount}
-          onChange={(e) => set('actual_amount', e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-      </td>
+      {showActual && (
+        <td className="py-1 px-1">
+          <Input
+            className="h-7 text-sm text-right w-24"
+            type="number"
+            placeholder="実経費"
+            value={editing.actual_amount}
+            onChange={(e) => set('actual_amount', e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        </td>
+      )}
       <td className="py-1 px-1">
         <Input
           className="h-7 text-sm w-32"

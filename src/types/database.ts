@@ -56,3 +56,26 @@ export interface LineItem {
 export interface ProjectWithCustomer extends Project {
   customers: Customer
 }
+
+export interface Worker {
+  id: string
+  user_id: string
+  name: string
+  default_daily_wage: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkRecord {
+  id: string
+  project_id: string
+  worker_id: string | null
+  user_id: string
+  work_date: string
+  daily_wage: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+  workers?: { id: string; name: string } | null
+}

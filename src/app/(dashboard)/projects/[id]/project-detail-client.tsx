@@ -7,12 +7,13 @@ import { toast } from 'sonner'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ProjectStatusBadge } from '@/components/projects/project-status-badge'
 import { LineItemsSection } from './line-items-section'
+import { WorkRecordsSection } from './work-records-section'
 import { SummaryPanel } from './summary-panel'
 import { ProjectEditDialog } from './project-edit-dialog'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import { exportEstimateToExcel } from '@/lib/export-excel'
-import type { LineItem, Project } from '@/types/database'
+import type { LineItem, Project, Worker, WorkRecord } from '@/types/database'
 
 type ProjectWithCustomer = Project & { customers: { id: string; name: string } }
 
@@ -20,12 +21,23 @@ interface Props {
   project: ProjectWithCustomer
   initialLineItems: LineItem[]
   customers: { id: string; name: string }[]
+  workers: Worker[]
+  initialWorkRecords: WorkRecord[]
 }
 
-export function ProjectDetailClient({ project: initialProject, initialLineItems, customers }: Props) {
+export function ProjectDetailClient({
+  project: initialProject,
+  initialLineItems,
+  customers,
+  workers,
+  initialWorkRecords,
+}: Props) {
   const [project, setProject] = useState(initialProject)
   const [lineItems, setLineItems] = useState(initialLineItems)
+  const [workRecords, setWorkRecords] = useState(initialWorkRecords)
   const [editOpen, setEditOpen] = useState(false)
+
+  const workRecordsTotal = workRecords.reduce((sum, r) => sum + r.daily_wage, 0)
 
   async function handleReceivedAmountChange(value: number | null) {
     const supabase = createClient()
@@ -81,7 +93,7 @@ export function ProjectDetailClient({ project: initialProject, initialLineItems,
             onClick={() => window.open(`/projects/${project.id}/print`, '_blank')}
           >
             <Printer className="size-4" />
-            <span className="hidden sm:inline">PDF</span>出力
+            <span className="hidden sm:inline">見積PDF</span>出力
           </Button>
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             <Settings className="size-4" />
@@ -91,23 +103,63 @@ export function ProjectDetailClient({ project: initialProject, initialLineItems,
       </div>
 
       {/* Line items by category */}
-      <div className="space-y-6">
-        {(['material', 'labor', 'transport', 'other'] as const).map((cat) => (
-          <LineItemsSection
-            key={cat}
-            category={cat}
-            projectId={project.id}
-            userId={project.user_id}
-            defaultLaborUnitPrice={project.default_labor_unit_price}
-            lineItems={lineItems.filter((i) => i.category === cat)}
-            onItemsChange={(updated) => {
-              setLineItems((prev) => [
-                ...prev.filter((i) => i.category !== cat),
-                ...updated,
-              ])
-            }}
-          />
-        ))}
+      <div className="space-y-4">
+        {/* 材料費 */}
+        <LineItemsSection
+          category="material"
+          projectId={project.id}
+          userId={project.user_id}
+          defaultLaborUnitPrice={project.default_labor_unit_price}
+          lineItems={lineItems.filter((i) => i.category === 'material')}
+          onItemsChange={(updated) =>
+            setLineItems((prev) => [...prev.filter((i) => i.category !== 'material'), ...updated])
+          }
+        />
+
+        {/* 作業費・人工（実経費列なし） */}
+        <LineItemsSection
+          category="labor"
+          projectId={project.id}
+          userId={project.user_id}
+          defaultLaborUnitPrice={project.default_labor_unit_price}
+          lineItems={lineItems.filter((i) => i.category === 'labor')}
+          onItemsChange={(updated) =>
+            setLineItems((prev) => [...prev.filter((i) => i.category !== 'labor'), ...updated])
+          }
+        />
+
+        {/* 出勤記録セクション（作業費の直下） */}
+        <WorkRecordsSection
+          projectId={project.id}
+          userId={project.user_id}
+          workers={workers}
+          workRecords={workRecords}
+          onRecordsChange={setWorkRecords}
+        />
+
+        {/* 交通費 */}
+        <LineItemsSection
+          category="transport"
+          projectId={project.id}
+          userId={project.user_id}
+          defaultLaborUnitPrice={project.default_labor_unit_price}
+          lineItems={lineItems.filter((i) => i.category === 'transport')}
+          onItemsChange={(updated) =>
+            setLineItems((prev) => [...prev.filter((i) => i.category !== 'transport'), ...updated])
+          }
+        />
+
+        {/* その他 */}
+        <LineItemsSection
+          category="other"
+          projectId={project.id}
+          userId={project.user_id}
+          defaultLaborUnitPrice={project.default_labor_unit_price}
+          lineItems={lineItems.filter((i) => i.category === 'other')}
+          onItemsChange={(updated) =>
+            setLineItems((prev) => [...prev.filter((i) => i.category !== 'other'), ...updated])
+          }
+        />
       </div>
 
       {/* Summary panel */}
@@ -116,6 +168,7 @@ export function ProjectDetailClient({ project: initialProject, initialLineItems,
         taxRate={project.tax_rate}
         roundingMode={project.rounding_mode}
         receivedAmount={project.received_amount}
+        workRecordsTotal={workRecordsTotal}
         onReceivedAmountChange={handleReceivedAmountChange}
       />
 
