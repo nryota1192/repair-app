@@ -2,7 +2,7 @@
 -- workers (作業員マスタ)
 -- ============================================================
 create table public.workers (
-  id                 uuid primary key default uuid_generate_v4(),
+  id                 uuid primary key default gen_random_uuid(),
   user_id            uuid not null references auth.users(id) on delete cascade,
   name               text not null,
   default_daily_wage numeric(12,2) not null,
@@ -26,7 +26,7 @@ create trigger workers_updated_at before update on public.workers
 -- work_records (出勤記録)
 -- ============================================================
 create table public.work_records (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   project_id  uuid not null references public.projects(id) on delete cascade,
   worker_id   uuid references public.workers(id) on delete set null,
   user_id     uuid not null references auth.users(id) on delete cascade,
